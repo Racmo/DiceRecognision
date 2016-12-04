@@ -4,7 +4,7 @@ import numpy as np
 import imutils
 import time
 
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(1)
 
 #wczytanie tla
 _, background_image = cap.read()
@@ -22,8 +22,10 @@ while(True):
     frame = cv2.GaussianBlur(frame, (5,5), 0)
 
     cv2.absdiff(background_image, frame, frame)
+    # frame = cv2.Canny(frame, 80,80)
 
-    frame = cv2.threshold(frame, 100, 255, cv2.THRESH_BINARY)[1]
+
+    frame = cv2.threshold(frame, 50, 255, cv2.THRESH_BINARY)[1]
 
     #wyszukiwanie konturow
     contours = cv2.findContours(frame.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -35,19 +37,72 @@ while(True):
 
     for contour in contours:
         if shape_detector.detect(contour) == 'square':
-            cv2.drawContours(original_frame, [contour], -1, (0, 255, 0), 5)
+            cv2.drawContours(original_frame, [contour], -1, (0, 255, 0), 2)
             # area = cv2.boundingRect(np.zeros(contour))
-            cv2.drawContours(mask, [contour], -1, 0, -1)
+            cv2.drawContours(mask, [contour], -1, 0, -1) #dodanie do maski konturu kostki
 
     mask = cv2.threshold(mask, 100, 255, cv2.THRESH_BINARY_INV)[1]
-    cropped_frame = cv2.bitwise_and(original_frame, original_frame, mask=mask)
+    cropped_frame = cv2.bitwise_and(original_frame, original_frame, mask=mask) #wyciecie kostki z oryginalnego obrazu
     cropped_frame = cv2.cvtColor(cropped_frame, cv2.COLOR_BGR2GRAY)
     cropped_frame = cv2.threshold(cropped_frame, 210, 255, cv2.THRESH_BINARY)[1]
 
+    kernel = np.ones((5, 5), np.uint8)
+
+    #zmiana rozmiaru (zeby erozja nie zlaczyla oczek)
+    cropped_frame_size = cropped_frame.shape[0]
+    # cropped_frame = imutils.resize(cropped_frame, width=1000)
+    ratio = cropped_frame_size / float(cropped_frame.shape[0])
+
+    #erozja (powiekszenie/zaokraglenie oczek)
+    # cropped_frame = cv2.erode(cropped_frame, kernel, iterations=1)
+
+    #ponowne wyszukiwanie konturu
+    # _, contours, hierarchy = cv2.findContours(cropped_frame, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    # #contours2 = contours2[0] if imutils.is_cv2() else contours2[1]
+    # hierarchy = hierarchy[0]
+    #
+    # for contour in zip(contours, hierarchy):
+    #     current_contour = contour[0]
+    #     current_hierarchy = contour[1]
+    #     if current_hierarchy[2] < 0:
+    #         if shape_detector.detect(current_contour) == 'circle':
+    #             #przeskalowanie na rozmiar orginalnego obrazu
+    #             current_contour = current_contour.astype('float')
+    #             current_contour *= ratio
+    #             current_contour = current_contour.astype('int')
+    #
+    #             cv2.drawContours(original_frame, [current_contour], -1, (255, 0, 0), 2)
+    #         print (shape_detector.detect(current_contour))
+
+    h, w = cropped_frame.shape[:2]
+    mask = np.zeros((h+2, w+2), np.uint8)
+
+    #zamalowanie tla na bialo
+    cv2.floodFill(cropped_frame, mask, (0,0), 255)
+
+    #usuniecie 'ramki' wokol kostki
+    cropped_frame = cv2.medianBlur(cropped_frame, 5)
+    cropped_frame = cv2.GaussianBlur(cropped_frame, (3, 3), 0)
+    cropped_frame = cv2.threshold(cropped_frame, 230, 255, cv2.THRESH_BINARY)[1]
+
+    #Utworzenie blob detectora
+    blob_detector_params = cv2.SimpleBlobDetector_Params()
+    blob_detector_params.minCircularity = 0.5 #stopien zaokraglenia
+    blob_detector = cv2.SimpleBlobDetector_create(blob_detector_params)
+
+    keypoints = blob_detector.detect(cropped_frame)
+
+    #zaznaczenie oczek na kostce
+    text = 'Liczba oczek: ' + str(len(keypoints))
+    original_frame = cv2.drawKeypoints(original_frame, keypoints, np.array([]), (0,0,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+    cv2.putText(original_frame, text, (30,30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 2)
     #wyswietlanie
     cv2.imshow('Edited', frame)
     cv2.imshow('Main', original_frame)
     cv2.imshow('Cropped', cropped_frame)
+
+
+
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
