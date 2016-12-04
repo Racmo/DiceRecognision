@@ -48,32 +48,6 @@ while(True):
 
     kernel = np.ones((5, 5), np.uint8)
 
-    #zmiana rozmiaru (zeby erozja nie zlaczyla oczek)
-    cropped_frame_size = cropped_frame.shape[0]
-    # cropped_frame = imutils.resize(cropped_frame, width=1000)
-    ratio = cropped_frame_size / float(cropped_frame.shape[0])
-
-    #erozja (powiekszenie/zaokraglenie oczek)
-    # cropped_frame = cv2.erode(cropped_frame, kernel, iterations=1)
-
-    #ponowne wyszukiwanie konturu
-    # _, contours, hierarchy = cv2.findContours(cropped_frame, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    # #contours2 = contours2[0] if imutils.is_cv2() else contours2[1]
-    # hierarchy = hierarchy[0]
-    #
-    # for contour in zip(contours, hierarchy):
-    #     current_contour = contour[0]
-    #     current_hierarchy = contour[1]
-    #     if current_hierarchy[2] < 0:
-    #         if shape_detector.detect(current_contour) == 'circle':
-    #             #przeskalowanie na rozmiar orginalnego obrazu
-    #             current_contour = current_contour.astype('float')
-    #             current_contour *= ratio
-    #             current_contour = current_contour.astype('int')
-    #
-    #             cv2.drawContours(original_frame, [current_contour], -1, (255, 0, 0), 2)
-    #         print (shape_detector.detect(current_contour))
-
     h, w = cropped_frame.shape[:2]
     mask = np.zeros((h+2, w+2), np.uint8)
 
@@ -96,12 +70,11 @@ while(True):
     text = 'Liczba oczek: ' + str(len(keypoints))
     original_frame = cv2.drawKeypoints(original_frame, keypoints, np.array([]), (0,0,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
     cv2.putText(original_frame, text, (30,30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 2)
+
     #wyswietlanie
-    cv2.imshow('Edited', frame)
+    # cv2.imshow('Edited', frame)
     cv2.imshow('Main', original_frame)
-    cv2.imshow('Cropped', cropped_frame)
-
-
+    # cv2.imshow('Cropped', cropped_frame)
 
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
